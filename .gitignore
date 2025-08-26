@@ -1,0 +1,7 @@
+.vs/
+RestaurantDatabaseManagement/bin/
+RestaurantDatabaseManagement/obj/
+RestaurantDatabaseManagement/Migrations/
+RestaurantDatabaseManagement/appsettings.json
+RestaurantDatabaseManagement/appsettings.Development.json
+
