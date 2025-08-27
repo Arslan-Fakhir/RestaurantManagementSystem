@@ -18,7 +18,7 @@ namespace RestaurantDatabaseManagement.Controllers
         }
 
 
-        [HttpGet("GetOrders/{id}")]
+        [HttpGet("GetAllOrdersOrById/{id}")]
         public async Task<IActionResult> GetOrders(int id=0)
         {
             if (id == 0)
