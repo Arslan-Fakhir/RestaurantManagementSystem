@@ -52,7 +52,7 @@ namespace RestaurantDatabaseManagement.Controllers
                 {
                     return BadRequest(new { message = result });
                 }
-                return CreatedAtAction(nameof(GetCategories), new { Id = category.category_id }, category);
+                return Ok(new { message = result });
             }
             else
             {

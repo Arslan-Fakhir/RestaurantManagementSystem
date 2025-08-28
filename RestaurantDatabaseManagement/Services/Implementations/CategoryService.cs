@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RestaurantDatabaseManagement.Data;
 using RestaurantDatabaseManagement.Models;
 using RestaurantDatabaseManagement.Models.Request;
 using RestaurantDatabaseManagement.Models.Response;
 using RestaurantDatabaseManagement.Services.Interfaces;
+using System.Linq.Expressions;
 using System.Reflection.Metadata.Ecma335;
 
 namespace RestaurantDatabaseManagement.Services.Implementations
@@ -19,8 +21,10 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
         public async Task<List<CategoryResponse>> GetAllAsync()
         {
+
             return await _ctx.CategoryResponse.FromSqlRaw("CALL Category({0},{1},{2},{3},{4},{5},{6})",
                 "select", 0, null, false, null, 0, 10000).ToListAsync();
+
         }
         public async Task<List<CategoryResponse>> GetByIdAsync(int id)
         {
@@ -32,11 +36,73 @@ namespace RestaurantDatabaseManagement.Services.Implementations
         {
             try
             {
+                if(category.sub_category==true)
+                {
+                    if (category.parent_category_name != "string" && category.parent_category_name != "")
+                    {
+                        var exists = new Category();
+                        exists = await _ctx.Category.Where(c => c.category_name == category.category_name).FirstOrDefaultAsync(); //Check if the caregory already exists
 
-                await _ctx.Database.ExecuteSqlRawAsync("CALL Category({0},{1},{2},{3},{4},{5},{6})",
-                    "insert", category.category_id, category.category_name, category.sub_category, category.parent_category_name, 0, 0);
+                        if (exists?.category_name == category.category_name)
+                        {
+                            return $"Category '{category.category_name}' already exist in database.";
+                        }
+                        else
+                        {
+                            string[] parents = category.parent_category_name.Split(',');
+                            var isCategory = await CheckCategoryExist(parents);
 
-                return "Category added successfully.";
+                            if (isCategory)
+                            {
+                                var newCategory = new Category
+                                {
+                                    category_name = category.category_name
+                                };
+                                _ctx.Category.Add(newCategory);
+                                _ctx.SaveChanges();
+
+                                var childCategory = await _ctx.Category.Where(c => c.category_name == category.category_name).FirstOrDefaultAsync();
+
+                                foreach (string parent in parents)
+                                {
+                                    var parentCategory = await _ctx.Category.Where(c => c.category_name == parent).FirstOrDefaultAsync();
+                                    var mapping = new CategoryMapping()
+                                    {
+                                        child_category_id = childCategory.category_id,
+                                        parent_category_id = parentCategory.category_id
+                                    };
+                                    _ctx.Category_Mapping.Add(mapping);
+                                }
+                                await _ctx.SaveChangesAsync();
+                                return "Category and it's mapping created successfully.";
+                            }
+                            else
+                            {
+                                return "Category creation failed! One or more parent_category_name not found";
+                            }
+                        }
+ 
+                    }
+                    else
+                    {
+                        return $"Failed to create! If (sub-category = true) you must enter parent_category_name.";
+                    }
+                }
+                else
+                {
+                    var exists = await _ctx.Category.Where(c => c.category_name == category.category_name).FirstOrDefaultAsync();
+                    if (exists?.category_name == category.category_name)
+                    {
+                        return $"Category '{exists.category_name}' already exist in database.";
+                    }
+                    var newCategory = new Category()
+                    {
+                        category_name=category.category_name
+                    };
+                    _ctx.Category.Add(newCategory);
+                    await _ctx.SaveChangesAsync();
+                    return "Category created successfully.";
+                }
             }
             catch (Exception ex)
             {
@@ -82,71 +148,78 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
         public async Task<string> PutAsync(CategoryRequest category)
         {
-            var existingCategory = await _ctx.Category
-                .Where(c => c.category_id == category.category_id)
-                .FirstOrDefaultAsync();
-
-            if (existingCategory == null)
+            try
             {
-                return $"Category ID {category.category_id} not found.";
-            }
+                var existingCategory = await _ctx.Category
+                    .Where(c => c.category_id == category.category_id)
+                    .FirstOrDefaultAsync();
 
-            if (category.sub_category == true && category.parent_category_name != null)
-            {
-                if (category.category_name != null)
+                if (existingCategory == null)
                 {
-                    existingCategory.category_name = category.category_name;
-
-                    _ctx.Category.Update(existingCategory);
-                    await _ctx.SaveChangesAsync();
+                    return $"Category ID {category.category_id} not found.";
                 }
 
-                string[] parentCategories = category.parent_category_name.Split(','); // add split function to update multiple parents
-
-                bool isCategory = await CheckCategoryExist(parentCategories); //find parent category if exists
-                if (isCategory == false)
-                    return "Cannot update! One or more parent categories were not found.";
-
-                var isDeleted = await _ctx.Database
-                    .ExecuteSqlRawAsync($"delete from category_mapping where child_category_id= {category.category_id}"); //delete existing parent-child relation
-
-                foreach (var parent in parentCategories)
+                if (category.sub_category == true && category.parent_category_name != null)
                 {
-                    var parentCategoryCheck = await _ctx.Category.Where(c => c.category_name == parent).FirstOrDefaultAsync(); //get category details of parent 
-
-                    if (parentCategoryCheck != null)
+                    if (category.category_name != null)
                     {
-                        var isParent = await CheckParentCategory(category.category_id, parentCategoryCheck.category_id); //check if the child category already exist as parent 
+                        existingCategory.category_name = category.category_name;
 
-                        if (isParent == false)
+                        _ctx.Category.Update(existingCategory);
+                        await _ctx.SaveChangesAsync();
+                    }
+
+                    string[] parentCategories = category.parent_category_name.Split(','); // add split function to update multiple parents
+
+                    bool isCategory = await CheckCategoryExist(parentCategories); //find parent category if exists
+                    if (isCategory == false)
+                        return "Cannot update! One or more parent categories were not found.";
+
+                    var isDeleted = await _ctx.Database
+                        .ExecuteSqlRawAsync($"delete from category_mapping where child_category_id= {category.category_id}"); //delete existing parent-child relation
+
+                    foreach (var parent in parentCategories)
+                    {
+                        var parentCategoryCheck = await _ctx.Category.Where(c => c.category_name == parent).FirstOrDefaultAsync(); //get category details of parent 
+
+                        if (parentCategoryCheck != null)
                         {
-                            return $"Category '{existingCategory.category_name}' cannot be child of category '{parent}'.";
-                        }
-                        else
-                        {
-                            var map = new CategoryMapping()
+                            var isParent = await CheckParentCategory(category.category_id, parentCategoryCheck.category_id); //check if the child category already exist as parent 
+
+                            if (isParent == false)
                             {
-                                parent_category_id = parentCategoryCheck.category_id,
-                                child_category_id = existingCategory.category_id
-                            };
-                            _ctx.Category_Mapping.Add(map);
-                            await _ctx.SaveChangesAsync();
+                                return $"Category '{existingCategory.category_name}' cannot be child of category '{parent}'.";
+                            }
+                            else
+                            {
+                                var map = new CategoryMapping()
+                                {
+                                    parent_category_id = parentCategoryCheck.category_id,
+                                    child_category_id = existingCategory.category_id
+                                };
+                                _ctx.Category_Mapping.Add(map);
+                                await _ctx.SaveChangesAsync();
+                            }
                         }
                     }
+                    return "Parent-child relation updated sucessfully.";
                 }
-                return "Parent-child relation updated sucessfully.";
-            }
-            else
-            {
-                if (category.category_name != null || category.category_name != "string")
+                else
                 {
-                    existingCategory.category_name = category.category_name;
+                    if (category.category_name != null || category.category_name != "string")
+                    {
+                        existingCategory.category_name = category.category_name;
 
-                    _ctx.Category.Update(existingCategory);
-                    await _ctx.SaveChangesAsync();
-                    return "Category updated successfully.";
+                        _ctx.Category.Update(existingCategory);
+                        await _ctx.SaveChangesAsync();
+                        return "Category updated successfully.";
+                    }
+                    return "Nothing to update!";
                 }
-                return "Nothing to update!";
+            }
+            catch (Exception ex)
+            {
+                return $"Error: {ex.Message}";
             }
         }
 
