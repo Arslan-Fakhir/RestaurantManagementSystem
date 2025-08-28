@@ -7,7 +7,6 @@ namespace RestaurantDatabaseManagement.Models.Request
     [Keyless]
     public class OrderRequest
     {
-        [Key]
         public int order_id { get; set; }
 
         [Required, StringLength(100)]

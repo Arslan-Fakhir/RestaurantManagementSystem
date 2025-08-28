@@ -30,4 +30,6 @@ public class Customer
     [Phone]
     public string contact { get; set; }
 
+    public int IsDeleted { get; set; } = 0;
+
 }

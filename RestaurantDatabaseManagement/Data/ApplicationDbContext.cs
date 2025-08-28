@@ -2,26 +2,29 @@
 using RestaurantDatabaseManagement.Models;
 using RestaurantDatabaseManagement.Models.Request;
 using RestaurantDatabaseManagement.Models.Response;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RestaurantDatabaseManagement.Data;
 
-public class ApplicationDbContext:DbContext
+public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions options) : base(options) 
+    public ApplicationDbContext(DbContextOptions options) : base(options)
     {
     }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<OrderItemRequest>().HasNoKey();
-        modelBuilder.Entity<OrderResponse>().HasNoKey();
-        modelBuilder.Entity<CategoryRequest>().HasNoKey();    
-        modelBuilder.Entity<CategoryResponse>().HasNoKey();
-        modelBuilder.Entity<ItemRequest>().HasNoKey();
-        modelBuilder.Entity<ItemResponse>().HasNoKey();
+        modelBuilder.Entity<OrderItemRequest>().HasNoKey().ToView(null);
+        modelBuilder.Entity<OrderRequest>().HasNoKey().ToView(null);
+        modelBuilder.Entity<OrderResponse>().HasNoKey().ToView(null);
+        modelBuilder.Entity<CategoryRequest>().HasNoKey().ToView(null);
+        modelBuilder.Entity<CategoryResponse>().HasNoKey().ToView(null);
+        modelBuilder.Entity<ItemRequest>().HasNoKey().ToView(null);
+        modelBuilder.Entity<ItemResponse>().HasNoKey().ToView(null);
+        modelBuilder.Entity<DeleteCategoryRequest>().HasNoKey().ToView(null);
     }
+
     public DbSet<Customer> Customers { get; set; }
     public DbSet<Category> Category { get; set; }
     public DbSet<CategoryMapping> Category_Mapping { get; set; }
@@ -31,25 +34,14 @@ public class ApplicationDbContext:DbContext
     public DbSet<OrderItem> Order_Items { get; set; }
     public DbSet<Order> Orders { get; set; }
 
-
-    //   Not Mapped DbSet for Request and Response Models
-
-    [NotMapped]
+   
+    // Optional: You can keep DbSets for requests/responses if you want to query them directly
     public DbSet<OrderRequest> OrderRequest { get; set; }
-    [NotMapped]
     public DbSet<OrderItemRequest> OrderItemRequest { get; set; }
-
-    [NotMapped]
     public DbSet<OrderResponse> OrderResponse { get; set; }
-    [NotMapped]
     public DbSet<CategoryRequest> CategoryRequest { get; set; }
-    [NotMapped]
     public DbSet<CategoryResponse> CategoryResponse { get; set; }
-    [NotMapped]
     public DbSet<ItemRequest> ItemRequest { get; set; }
-    [NotMapped]
     public DbSet<ItemResponse> ItemResponse { get; set; }
-    [NotMapped]
     public DbSet<DeleteCategoryRequest> DeleteCategoryRequest { get; set; }
-
 }

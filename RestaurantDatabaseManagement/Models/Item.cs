@@ -17,4 +17,5 @@ public class Item
 
     [Required]
     public double price { get; set; }
+
 }

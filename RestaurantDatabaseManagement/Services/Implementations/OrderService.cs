@@ -88,7 +88,7 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
         public async Task<string> PutAsync(OrderRequest order)
         {
-            Order oldOrder = await _ctx.Orders
+            var oldOrder = await _ctx.Orders   // <---------------------     I changed datatype from Order to var here
                 .Where(o => o.order_id == order.order_id)
                 .FirstOrDefaultAsync();
 
