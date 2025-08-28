@@ -38,20 +38,14 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
             if (customer == null)
             {
-                if (order.customer_name.Contains(" "))
-                {
-                    await _ctx.Database.ExecuteSqlRawAsync("Call customers({0},{1},{2},{3},{4},{5})",
-                        "insert", 0, order.customer_name.Split(' ')[0], order.customer_name.Split(' ')[1], order.contact, order.email);
-                }
-                else
-                {
-                    await _ctx.Database.ExecuteSqlRawAsync("Call customers({0},{1},{2},{3},{4},{5})",
-                        "insert", 0, order.customer_name, " ", order.contact, order.email);
-                }
+                var fullname = order.customer_name.Split(" ");
+                
+                await _ctx.Database.ExecuteSqlRawAsync("Call customers({0},{1},{2},{3},{4},{5})",
+                    "insert", 0, fullname[0], fullname[1], order.contact, order.email);
 
-                    customer = await _ctx.Customers
-                        .Where(c => c.contact == order.contact && c.email == order.email)
-                        .FirstOrDefaultAsync();
+                customer = await _ctx.Customers
+                    .Where(c => c.contact == order.contact && c.email == order.email)
+                    .FirstOrDefaultAsync();
             }
 
             var newOrder = new Order
@@ -69,15 +63,15 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
             foreach (var item in order.Items)
             {
-                var item_id = await _ctx.Items.Where(i => i.item_name == item.item_name).Select(c => c.item_id).FirstOrDefaultAsync();
-                if (item_id == 0)
+                var item_id = await _ctx.Items.Where(i => i.item_name == item.item_name).FirstOrDefaultAsync();
+                if (item_id == null)
                     return $"Item '{item.item_name}' not found.";
 
 
                 await _ctx.Database.ExecuteSqlInterpolatedAsync($"insert into Order_items(order_id,item_id,quantity) values({newOrder.order_id},{item_id}, {item.quantity})");
 
-                var price = await _ctx.Items.Where(i => i.item_id == item_id).Select(i => i.price).FirstOrDefaultAsync();
-                totalBillAmount = totalBillAmount + (price * item.quantity);
+                //var price = await _ctx.Items.Where(i => i.item_id == item_id).Select(i => i.price).FirstOrDefaultAsync(); //avoid extra calls 
+                totalBillAmount += (item_id.price * item.quantity);
             }
 
             var TotalBill = new Payment

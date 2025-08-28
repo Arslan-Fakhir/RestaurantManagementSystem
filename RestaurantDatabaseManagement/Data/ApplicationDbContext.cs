@@ -49,5 +49,7 @@ public class ApplicationDbContext:DbContext
     public DbSet<ItemRequest> ItemRequest { get; set; }
     [NotMapped]
     public DbSet<ItemResponse> ItemResponse { get; set; }
+    [NotMapped]
+    public DbSet<DeleteCategoryRequest> DeleteCategoryRequest { get; set; }
 
 }

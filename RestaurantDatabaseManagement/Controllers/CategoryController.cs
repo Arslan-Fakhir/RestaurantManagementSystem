@@ -40,6 +40,11 @@ namespace RestaurantDatabaseManagement.Controllers
         [HttpPost("CreateOrUpdateCategory")]
         public async Task<IActionResult> CreateCategory(CategoryRequest category)
         {
+            if(category == null)
+            {
+                return BadRequest("Category data is null.");
+            }
+
             if (category.category_id == 0)
             {
                 var result = await _service.PostAsync(category);
@@ -60,15 +65,20 @@ namespace RestaurantDatabaseManagement.Controllers
             }
         }
 
-        [HttpDelete("DeleteCategory/{id}")]
-        public async Task<IActionResult> DeleteCategory(int id)
+        [HttpDelete("DeleteCategory")]
+        public async Task<IActionResult> DeleteCategory(DeleteCategoryRequest category)
         {
-            var result = await _service.DeleteAsync(id);
+            if (category == null)
+                return BadRequest("Invalid category data.");
+
+            var result = await _service.DeleteAsync(category);
+
             if (result.Contains("not found"))
             {
                 return NotFound(new { message = result });
             }
             return Ok(new { message = result });
+
         }
     }
 }
