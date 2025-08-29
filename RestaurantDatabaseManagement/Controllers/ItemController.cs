@@ -24,6 +24,7 @@ namespace RestaurantDatabaseManagement.Controllers
 
                 if (items.Count == 0)
                     return NotFound("No Items Record Found.");
+                
                 return Ok(items);
             }
             else

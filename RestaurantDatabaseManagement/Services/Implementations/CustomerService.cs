@@ -17,34 +17,67 @@ namespace RestaurantDatabaseManagement.Services.Implementations
         }
         public async Task<List<Customer>> GetAllAsync()
         {
-            return await _ctx.Customers.FromSqlRaw("CALL Customers({0},{1},{2},{3},{4},{5})","select",0,"null","null","null","null").ToListAsync();
+            try
+            {
+                var result= await _ctx.Customers.FromSqlRaw("CALL Customers({0},{1},{2},{3},{4},{5})", "select", 0, "null", "null", "null", "null").ToListAsync();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new List<Customer>();
+            }
         }
 
         public async Task<Customer?> GetByIdAsync(int id)
         {
-            return await _ctx.Customers.FindAsync(id);
+            try
+            {
+                return await _ctx.Customers.FindAsync(id);
+            }
+            catch (Exception)
+            {
+                return new Customer();
+            }
         }
 
-        public async Task<int> PostAsync(Customer customer)
+        public async Task<int> PostAsync(CustomerRequest customer)
         {
-            return await _ctx.Database.ExecuteSqlRawAsync("CALL customers({0}, {1}, {2}, {3}, {4}, {5})",
-                                             "insert", 0, customer.first_name, customer.last_name, customer.contact, customer.email);
+            try
+            {
+                return await _ctx.Database.ExecuteSqlRawAsync("CALL customers({0}, {1}, {2}, {3}, {4}, {5})",
+                                                 "insert", 0, customer.first_name, customer.last_name, customer.contact, customer.email);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
         }
 
-        public async Task<int> PutAsync(Customer customer)
+        public async Task<int> PutAsync(CustomerRequest customer)
         {
-
-            return await _ctx.Database.ExecuteSqlRawAsync("CALL customers({0},{1},{2},{3},{4},{5})", 
-                                            "update", customer.customer_id, customer.first_name, customer.last_name, customer.contact, customer.email);
-
+            try
+            {
+                return await _ctx.Database.ExecuteSqlRawAsync("CALL customers({0},{1},{2},{3},{4},{5})",
+                                                "update", customer.customer_id, customer.first_name, customer.last_name, customer.contact, customer.email);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
         }
 
         public async Task<int> DeleteAsync(int id)
         {
-            var result = await _ctx.Database.ExecuteSqlRawAsync("CALL customers({0},{1},{2},{3},{4},{5})",
-                                            "delete", id, "null", "null", "null", "null", "null");
+            try
+            {
+                return await _ctx.Database.ExecuteSqlRawAsync("CALL customers({0},{1},{2},{3},{4},{5})",
+                                                "delete", id, "null", "null", "null", "null", "null");
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
 
-            return result;
         }
     }
 }

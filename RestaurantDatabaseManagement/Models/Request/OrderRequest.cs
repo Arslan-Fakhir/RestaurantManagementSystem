@@ -10,7 +10,7 @@ namespace RestaurantDatabaseManagement.Models.Request
         public int order_id { get; set; }
 
         [Required, StringLength(100)]
-        public string customer_name { get; set; }
+        public string customer_full_name { get; set; }
 
         [Required, Phone]
         public string contact { get; set; }

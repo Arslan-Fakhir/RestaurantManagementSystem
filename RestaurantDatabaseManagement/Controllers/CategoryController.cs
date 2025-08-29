@@ -40,15 +40,11 @@ namespace RestaurantDatabaseManagement.Controllers
         [HttpPost("CreateOrUpdateCategory")]
         public async Task<IActionResult> CreateCategory(CategoryRequest category)
         {
-            if(category == null)
-            {
-                return BadRequest("Category data is null.");
-            }
-
+            
             if (category.category_id == 0)
             {
                 var result = await _service.PostAsync(category);
-                if (result.Contains("not found"))
+                if (result.Contains("not found") || result.Contains("Failed") || result.Contains("Already exist"))
                 {
                     return BadRequest(new { message = result });
                 }
@@ -57,7 +53,7 @@ namespace RestaurantDatabaseManagement.Controllers
             else
             {
                 var result = await _service.PutAsync(category);
-                if(result.Contains("not found"))
+                if(result.Contains("not found") || result.Contains("Cannot Update") || result.Contains("Cannot be child") || result.Contains("Nothing to update"))
                 {
                     return BadRequest(new { message = result });
                 }
@@ -68,15 +64,20 @@ namespace RestaurantDatabaseManagement.Controllers
         [HttpDelete("DeleteCategory")]
         public async Task<IActionResult> DeleteCategory(DeleteCategoryRequest category)
         {
-            if (category == null)
-                return BadRequest("Invalid category data.");
-
+            
             var result = await _service.DeleteAsync(category);
 
-            if (result.Contains("not found"))
+            if (result.Contains("not found") )
             {
                 return NotFound(new { message = result });
             }
+            else if (result.Contains("Cannot delete"))
+            {
+                return Conflict(new { message= result});
+            }
+            else if (result.Contains("Error"))
+                return BadRequest(new { message = result });
+
             return Ok(new { message = result });
 
         }

@@ -49,10 +49,10 @@ namespace RestaurantDatabaseManagement.Controllers
                 var result = await _service.PostAsync(order);
                 if (result.Contains("not found"))
                 {
-                    return BadRequest(new { message = result });
+                    return Ok(new { message = result });
                 }
 
-                return CreatedAtAction(nameof(GetOrders), new { Id = order.order_id }, order);
+                return BadRequest(new { messsage=result});
             }
             else
             {

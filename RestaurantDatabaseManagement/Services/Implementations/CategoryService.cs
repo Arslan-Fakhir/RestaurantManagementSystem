@@ -21,15 +21,27 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
         public async Task<List<CategoryResponse>> GetAllAsync()
         {
-
-            return await _ctx.CategoryResponse.FromSqlRaw("CALL Category({0},{1},{2},{3},{4},{5},{6})",
-                "select", 0, null, false, null, 0, 10000).ToListAsync();
+            try
+            {
+                return await _ctx.CategoryResponse.FromSqlRaw("CALL Category({0},{1},{2},{3},{4},{5},{6})",
+                    "select", 0, null, false, null, 0, 10000).ToListAsync();
+            }catch(Exception ex)
+            {
+                return new List<CategoryResponse>();
+            }
 
         }
         public async Task<List<CategoryResponse>> GetByIdAsync(int id)
         {
-            return await _ctx.CategoryResponse.FromSqlRaw("CALL Category({0},{1},{2},{3},{4},{5},{6})",
-                "select", id, null, false, null, 0, 10000).ToListAsync();
+            try
+            {
+                return await _ctx.CategoryResponse.FromSqlRaw("CALL Category({0},{1},{2},{3},{4},{5},{6})",
+                    "select", id, null, false, null, 0, 10000).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                return new List<CategoryResponse>();
+            }
         }
 
         public async Task<string> PostAsync(CategoryRequest category)

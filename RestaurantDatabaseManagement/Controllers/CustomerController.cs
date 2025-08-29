@@ -50,7 +50,7 @@ namespace RestaurantDatabaseManagement.Controllers
         }
 
         [HttpPost("CreateOrUpdateCustomer")]
-        public async Task<IActionResult> CreateOrUpdateCustomer(Customer customer)
+        public async Task<IActionResult> CreateOrUpdateCustomer(CustomerRequest customer)
         {
             if (customer.customer_id == 0)
             {
