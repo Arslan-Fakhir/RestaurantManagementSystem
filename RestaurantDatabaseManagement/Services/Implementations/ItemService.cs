@@ -70,6 +70,21 @@ namespace RestaurantDatabaseManagement.Services.Implementations
             }
         }
 
+        private async Task<bool> CheckParentCategoryExist(string[] categories)
+        {
+            foreach(var category in categories)
+            {
+                var exist = await _ctx.Category
+                    .Where(c => c.category_name == category)
+                    .FirstOrDefaultAsync();
+
+                if (exist == null)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
         public async Task<string> PutAsync(ItemRequest item)
         {
             try
@@ -83,25 +98,21 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     return $"Item ID {item.item_id} not found.";
                 }
 
-                string name = item.parent_category_name;
-                string[] parents = name.Split(',');
+                string[] parents = item.parent_category_name.Split(',');
 
-                foreach (var parent in parents)
+                bool isParentExist = await CheckParentCategoryExist(parents); //check if items exist
+
+                if (isParentExist)
                 {
-                    var category = await _ctx.Category
-                    .Where(c => c.category_name == parent)
-                    .FirstOrDefaultAsync();
+                    await _ctx.Database.ExecuteSqlRawAsync("Call items ({0},{1},{2},{3},{4},{5},{6},{7})",
+                        "update", item.item_id, item.item_name, item.price, item.hasParent, item.parent_category_name, 0, 10000);
 
-                    if (category == null)
-                    {
-                        return $"Category {parent} not found.";
-                    }
+                    return "Item updated successfully.";
                 }
-
-                await _ctx.Database.ExecuteSqlRawAsync("Call items ({0},{1},{2},{3},{4},{5},{6},{7})",
-                    "update", item.item_id, item.item_name, item.price, item.hasParent, item.parent_category_name, 0, 10000);
-
-                return "Item updated successfully.";
+                else
+                {
+                    return $"One or more category(s) not found.";
+                }
             }
             catch (Exception ex)
             {
