@@ -19,6 +19,8 @@ public class Order
     public string customer_contact { get; set; }
     [Required,EmailAddress]
     public string customer_email { get; set; }
+    [Required]
+    public string order_number { get; set; }
 
     [ForeignKey("customer_id")]
     public Customer Customer { get; set; } // Navigation property to Customer
