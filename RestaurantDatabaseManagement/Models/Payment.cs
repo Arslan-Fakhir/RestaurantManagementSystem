@@ -13,6 +13,9 @@ public class Payment
 
     [Required]
     public double amount { get; set; }
+    public int payment_status { get; set; } = 0;
+
+    public string? transaction_id { get; set; }
 
     [ForeignKey("order_id")]
     public Order Order { get; set; }

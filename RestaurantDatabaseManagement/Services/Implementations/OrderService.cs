@@ -5,6 +5,7 @@ using RestaurantDatabaseManagement.Data;
 using RestaurantDatabaseManagement.Models;
 using RestaurantDatabaseManagement.Models.Request;
 using RestaurantDatabaseManagement.Services.Interfaces;
+using Stripe;
 using System.Diagnostics;
 using System.Linq;
 
@@ -13,9 +14,11 @@ namespace RestaurantDatabaseManagement.Services.Implementations
     public class OrderService : IOrderService
     {
         private readonly ApplicationDbContext _ctx;
-        public OrderService(ApplicationDbContext ctx)
+        private readonly StripePaymentIntentsService _stripeService;
+        public OrderService(ApplicationDbContext ctx, StripePaymentIntentsService stripeService)
         {
             _ctx = ctx;
+            _stripeService = stripeService;
         }
 
         public async Task<List<OrderResponse>> GetAllAsync()
@@ -59,76 +62,111 @@ namespace RestaurantDatabaseManagement.Services.Implementations
             }
             return true;
         }
+        public static string GenerateOrderId()
+        {
+            // Timestamp part (e.g. 20250902-153045)
+            string date = DateTime.UtcNow.ToString("yyyyMMdd");
+            string time = DateTime.UtcNow.ToString("HHmmss");
+
+            // Generate a GUID and convert to bytes
+            byte[] guidBytes = Guid.NewGuid().ToByteArray();
+
+            // Convert first 4 bytes into an integer
+            int numericPart = BitConverter.ToInt32(guidBytes, 0);
+
+            // Ensure it's positive and take last 4 digits
+            numericPart = Math.Abs(numericPart) % 10000;
+
+            // Format to always have 4 digits (e.g. 0042 instead of 42)
+            string uniquePart = numericPart.ToString("D4");
+
+            // Combine
+            string orderId = $"{date}-{time}-{uniquePart}";
+
+            return orderId;
+        }
         public async Task<string> PostAsync(OrderRequest order)
         {
             try
             {
-                var customer = await _ctx.Customers
-                    .Where(c => c.email == order.email && c.IsDeleted!=1)
-                    .FirstOrDefaultAsync();
 
-                bool items = await CheckItemExist(order.Items); /////////////////
+                bool isValidItems = await CheckItemExist(order.Items);
 
-                if (items == true)
-                {
-                    if (customer == null)
-                    {
-                        var fullname = order.customer_full_name.Split(" ");
-
-                        await _ctx.Database.ExecuteSqlRawAsync("Call customers({0},{1},{2},{3},{4},{5})",
-                            "insert", 0, fullname[0], fullname.Length > 1 ? fullname[1] : null, order.contact, order.email);
-
-                        customer = await _ctx.Customers
-                            .Where(c => c.email == order.email)
-                            .FirstOrDefaultAsync();
-                    }
-
-                    double totalBillAmount = 0;
-
-                    var newOrder = new Order
-                    {
-                        customer_id = customer.customer_id,
-                        customer_name = order.customer_full_name,
-                        customer_contact = order.contact,
-                        customer_email = order.email
-                    };
-
-                    _ctx.Orders.Add(newOrder);
-                    await _ctx.SaveChangesAsync();
-
-                    foreach (var item in order.Items)
-                    {
-                        var existingItem = await _ctx.Items.Where(i => i.item_name == item.item_name).FirstOrDefaultAsync();
-
-                        //await _ctx.Database.ExecuteSqlInterpolatedAsync($"insert into Order_items(order_id,item_id,quantity) values({newOrder.order_id},{item_id}, {item.quantity})");
-
-                        var newOrderItems = new OrderItem
-                        {
-                            order_id = newOrder.order_id,
-                            item_id = existingItem.item_id,
-                            quantity = item.quantity
-                        };
-
-                        _ctx.Order_Items.Add(newOrderItems);
-                        await _ctx.SaveChangesAsync();  
-                        totalBillAmount += (existingItem.price * item.quantity);
-                    }
-
-                    var TotalBill = new Payment
-                    {
-                        order_id = newOrder.order_id,
-                        amount = totalBillAmount
-                    };
-
-                    _ctx.Payments.Add(TotalBill);
-                    await _ctx.SaveChangesAsync();
-
-                    return "Order created successfully.";
-                }
-                else
+                if (isValidItems == false)
                 {
                     return "Either one or more items not found or item_quantity is zero";
                 }
+                else
+                {
+                    string transactionId = await _stripeService.CreatePayment(order);
+                    if (transactionId.Contains("failed"))
+                    {
+                        return "Payment failed!";
+                    }
+                    else // if payment is successful then create order
+                    {
+                        double totalBillAmount = 0; 
+
+                        var customer = await _ctx.Customers
+                        .Where(c => c.email == order.email && c.IsDeleted != 1)
+                        .FirstOrDefaultAsync();
+
+                        if (customer == null)
+                        {
+                            var fullname = order.customer_full_name.Split(" ");
+
+                            await _ctx.Database.ExecuteSqlRawAsync("Call customers({0},{1},{2},{3},{4},{5})",
+                                "insert", 0, fullname[0], fullname.Length > 1 ? fullname[1] : " ", order.contact, order.email);
+
+                            customer = await _ctx.Customers
+                                .Where(c => c.email == order.email && c.IsDeleted != 1)
+                                .FirstOrDefaultAsync();
+                        }
+                        string orderNumber = GenerateOrderId(); 
+                        var newOrder = new Order
+                        {
+                            customer_id = customer.customer_id,
+                            customer_name = order.customer_full_name,
+                            customer_contact = order.contact,
+                            customer_email = order.email,
+                            order_number=orderNumber,
+                        };
+
+                        _ctx.Orders.Add(newOrder);
+                        await _ctx.SaveChangesAsync();
+
+                        foreach (var item in order.Items)
+                        {
+                            var existingItem = await _ctx.Items.Where(i => i.item_name == item.item_name).FirstOrDefaultAsync();
+
+                            var newOrderItems = new OrderItem
+                            {
+                                order_id = newOrder.order_id,
+                                item_id = existingItem.item_id,
+                                quantity = item.quantity
+                            };
+
+                            _ctx.Order_Items.Add(newOrderItems);
+                            await _ctx.SaveChangesAsync();
+
+                            totalBillAmount += (existingItem.price * item.quantity);
+                        }
+
+                        var newPayment = new Payment
+                        {
+                            order_id = newOrder.order_id,
+                            amount = totalBillAmount,
+                            payment_status = 1,
+                            transaction_id = transactionId
+                        };
+
+                        _ctx.Payments.Add(newPayment);
+                        await _ctx.SaveChangesAsync();
+
+                        return "Transaction succeeded and order created";
+                    }
+                }
+
             }
             catch (Exception ex)
             {
@@ -206,6 +244,7 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                 return $"Error: {ex.Message}";
             }
         }
+
         public async Task<int> DeleteAsync(int id)
         {
             try
