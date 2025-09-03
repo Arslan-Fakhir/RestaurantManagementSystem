@@ -105,7 +105,7 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     }
                     else // if payment is successful then create order
                     {
-                        double totalBillAmount = 0; 
+                        double totalBillAmount = 0;
 
                         var customer = await _ctx.Customers
                         .Where(c => c.email == order.email && c.IsDeleted != 1)
@@ -122,14 +122,15 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                                 .Where(c => c.email == order.email && c.IsDeleted != 1)
                                 .FirstOrDefaultAsync();
                         }
-                        string orderNumber = GenerateOrderId(); 
+
+                        string orderNumber = GenerateOrderId();
                         var newOrder = new Order
                         {
                             customer_id = customer.customer_id,
                             customer_name = order.customer_full_name,
                             customer_contact = order.contact,
                             customer_email = order.email,
-                            order_number=orderNumber,
+                            order_number = orderNumber,
                         };
 
                         _ctx.Orders.Add(newOrder);

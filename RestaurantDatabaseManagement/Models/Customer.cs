@@ -23,13 +23,15 @@ public class Customer
     public string last_name { get; set; }
 
     [Required]
-    [EmailAddress]
     public string email { get; set; }
 
     [Required]
-    [Phone]
     public string contact { get; set; }
 
     public int IsDeleted { get; set; } = 0;
+
+    public string? createdAt { get; set; } 
+    public string? updatedAt { get; set; }
+    public string? deletedAt { get; set; }
 
 }

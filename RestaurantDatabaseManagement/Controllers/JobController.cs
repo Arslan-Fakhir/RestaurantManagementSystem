@@ -18,8 +18,8 @@ namespace RestaurantDatabaseManagement.Controllers
         [Route("PendingPaymentsReminder")]
         public ActionResult PendingPaymentsReminder() //recurring job
         {
-            var receiver = "mmuaz9193lgu@gmail.com";
-            //var receiver = "arslanfakhir16@gmail.com";
+            //var receiver = "mmuaz9193lgu@gmail.com";
+            var receiver = "arslanfakhir16@gmail.com";
             var subject = "Pending Payment Reminder - Report";
             var message = "This is a reminder for your pending payment. Please complete the payment at your earliest convenience.";
 
