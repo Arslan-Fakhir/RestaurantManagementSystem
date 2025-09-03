@@ -124,6 +124,9 @@ namespace RestaurantDatabaseManagement.Services.Implementations
         {
             try
             {
+                string date = DateTime.Now.ToString("yyyy-MM-dd");
+                string time = DateTime.Now.ToString("HH:mm:ss");
+
                 var existingItem = await _ctx.Items
                     .Where(i => i.item_id == id)
                     .FirstOrDefaultAsync();
@@ -140,7 +143,11 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     _ctx.Item_Mapping.Remove(mapping);
                     await _ctx.SaveChangesAsync();
                 }
-                _ctx.Items.Remove(existingItem);
+
+                existingItem.IsDeleted = 1; // ------------------------> Changed here to soft delete
+                existingItem.deletedAt = $"{date}-{time}";
+
+                _ctx.Items.Update(existingItem);// ------------------------> Changed remove to update here
                 await _ctx.SaveChangesAsync();
 
                 return "Item deleted successfully.";

@@ -13,4 +13,9 @@ public class Category
     [StringLength(100)]
     [Display(Name="Category Name")]
     public string category_name { get; set; }
+    public int IsDeleted { get; set; } = 0;
+
+    public string? createdAt { get; set; }
+    public string? updatedAt { get; set; }
+    public string? deletedAt { get; set; }
 }

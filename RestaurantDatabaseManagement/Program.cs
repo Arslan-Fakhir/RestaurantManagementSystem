@@ -49,7 +49,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IItemService, ItemService>();
 builder.Services.AddScoped<StripePaymentIntentsService>();
-builder.Services.AddScoped<EmailService>();
+builder.Services.AddTransient<EmailService>();
 builder.Services.AddTransient<JobController>();
 
 // Stripe configuration

@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using RestaurantDatabaseManagement.Data;
 using RestaurantDatabaseManagement.Models;
 using RestaurantDatabaseManagement.Models.Request;
 using RestaurantDatabaseManagement.Models.Response;
 using RestaurantDatabaseManagement.Services.Interfaces;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection.Metadata.Ecma335;
 
@@ -66,9 +68,16 @@ namespace RestaurantDatabaseManagement.Services.Implementations
 
                             if (isCategory)
                             {
+                                string date = DateTime.UtcNow.ToString("yyyyMMdd");
+                                string time = DateTime.UtcNow.ToString("HHmmss");
+
                                 var newCategory = new Category
                                 {
-                                    category_name = category.category_name
+                                    category_name = category.category_name,
+                                    IsDeleted = 0,
+                                    createdAt = $"{date}-{time}",
+                                    updatedAt = null,
+                                    deletedAt = null
                                 };
                                 _ctx.Category.Add(newCategory);
                                 _ctx.SaveChanges();
@@ -107,9 +116,13 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     {
                         return $"Category '{exists.category_name}' already exist in database.";
                     }
+                    string date = DateTime.UtcNow.ToString("yyyyMMdd");
+                    string time = DateTime.UtcNow.ToString("HHmmss");
+
                     var newCategory = new Category()
                     {
-                        category_name=category.category_name
+                        category_name=category.category_name,
+                        createdAt=$"{date}-{time}"
                     };
                     _ctx.Category.Add(newCategory);
                     await _ctx.SaveChangesAsync();
@@ -162,6 +175,9 @@ namespace RestaurantDatabaseManagement.Services.Implementations
         {
             try
             {
+                string date = DateTime.UtcNow.ToString("yyyyMMdd");
+                string time = DateTime.UtcNow.ToString("HHmmss");
+
                 var existingCategory = await _ctx.Category
                     .Where(c => c.category_id == category.category_id)
                     .FirstOrDefaultAsync();
@@ -176,6 +192,7 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     if (category.category_name != null)
                     {
                         existingCategory.category_name = category.category_name;
+                        existingCategory.updatedAt = $"{date}-{time}";
 
                         _ctx.Category.Update(existingCategory);
                         await _ctx.SaveChangesAsync();
@@ -221,6 +238,7 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     if (category.category_name != null || category.category_name != "string")
                     {
                         existingCategory.category_name = category.category_name;
+                        existingCategory.updatedAt = $"{date}-{time}";
 
                         _ctx.Category.Update(existingCategory);
                         await _ctx.SaveChangesAsync();
@@ -239,6 +257,8 @@ namespace RestaurantDatabaseManagement.Services.Implementations
         {
             try
             {
+                string date = DateTime.UtcNow.ToString("yyyyMMdd");
+                string time = DateTime.UtcNow.ToString("HHmmss");
                 var existingParent = new Category();
 
                 var existingCategory = await _ctx.Category
@@ -251,13 +271,13 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                 }
 
                 var childCount = await _ctx.Category_Mapping.CountAsync(cm => cm.parent_category_id == category.category_id); //check if category is parent to any other category
-                
+
                 if (childCount != 0)
                 {
                     return $"Cannot delete {existingCategory.category_name}! It is a parent to other categories.";
                 }
 
-                if (category.parent_category_name == "" || category.parent_category_name == "string")
+                if (category.parent_category_name == "" /*|| category.parent_category_name == "string"*/) // ------------------------------> changed here
                 {
                     var parentCount = await _ctx.Category_Mapping.CountAsync(cm => cm.child_category_id == category.category_id); //check if category is child to any other category
 
@@ -265,8 +285,12 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                     {
                         return $"Cannot delete {existingCategory.category_name}! It has parent category mapping(s). Please specify parent_category_name to delete specific mapping.";
                     }
+                    
 
-                    _ctx.Category.Remove(existingCategory); //remove category if it has no parent mapping
+                    existingCategory.IsDeleted = 1; // ------------------------------> changed here
+                    existingCategory.updatedAt = $"{date}-{time}";
+
+                    _ctx.Category.Update(existingCategory); //remove category if it has no parent mapping ------------------------------> changed remove to update here 
                     await _ctx.SaveChangesAsync();
                     return "Category deleted successfully.";
                 }
@@ -291,13 +315,18 @@ namespace RestaurantDatabaseManagement.Services.Implementations
                 {
                     return $"Category '{existingCategory.category_name}' is not a child of category '{category.parent_category_name}'.";
                 }
-                    var pCount = await _ctx.Category_Mapping.CountAsync(cm => cm.child_category_id == category.category_id); //check if category is child to any other category
-                if (pCount != 0)
+
+                var pCount = await _ctx.Category_Mapping.CountAsync(cm => cm.child_category_id == category.category_id); //check if category is child to any other category
+
+                if (pCount > 0)
                 {
                     return $"Category mapping deleted successfully.";
                 }
 
-                _ctx.Category.Remove(existingCategory); //remove category if it has no other parent mapping
+                existingCategory.IsDeleted = 1; // ------------------------------> changed here
+                existingCategory.deletedAt = $"{date}-{time}";
+
+                _ctx.Category.Update(existingCategory); //remove category if it has no other parent mapping // ------------------------------> changed remove to update here 
                 await _ctx.SaveChangesAsync();
 
                 return "Category deleted successfully.";
