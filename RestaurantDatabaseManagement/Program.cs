@@ -5,6 +5,7 @@ using HangfireBasicAuthenticationFilter;
 using Microsoft.EntityFrameworkCore;
 using RestaurantDatabaseManagement.Controllers;
 using RestaurantDatabaseManagement.Data;
+using RestaurantDatabaseManagement.Jobs;
 using RestaurantDatabaseManagement.Services.Implementations;
 using RestaurantDatabaseManagement.Services.Interfaces;
 using Stripe;
@@ -17,7 +18,23 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<ICustomerService, RestaurantDatabaseManagement.Services.Implementations.CustomerService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IItemService, ItemService>();
+builder.Services.AddScoped<StripePaymentIntentsService>();
+
+builder.Services.AddScoped<EmailService>(); //hangfire jobs service logic
+builder.Services.AddTransient<PendingPaymentsJob>(); //hangfire job calls
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+//////////////////////////////////////////////////////////
+/*                      Quartz.NET                      */
+
+builder.Services.AddInfrastructure();
+
+//////////////////////////////////////////////////////////
 
 // ✅ Register EF Core with MySQL (using MySqlConnector)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -26,7 +43,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         ServerVersion.AutoDetect(connectionString)
     )
 );
-var options = new MySqlStorageOptions // configure MySQL storage options
+////////////////////////////////////////////////////////
+/*                      Hangfire                      */
+
+/*var options = new MySqlStorageOptions // configure MySQL storage options
 {
     TransactionIsolationLevel = (System.Transactions.IsolationLevel?)IsolationLevel.ReadCommitted,
     QueuePollInterval = TimeSpan.FromSeconds(15),
@@ -42,15 +62,9 @@ builder.Services.AddHangfire(config =>
     config.UseStorage(new MySqlStorage(hangfireConnectionString, options))); // Use MySqlStorage for Hangfire
 
 builder.Services.AddHangfireServer(); // Add Hangfire background job server
+*/
 
-
-builder.Services.AddScoped<ICustomerService, RestaurantDatabaseManagement.Services.Implementations.CustomerService>();
-builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<IItemService, ItemService>();
-builder.Services.AddScoped<StripePaymentIntentsService>();
-builder.Services.AddTransient<EmailService>();
-builder.Services.AddTransient<JobController>();
+////////////////////////////////////////////////////////
 
 // Stripe configuration
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
@@ -68,8 +82,10 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
-// ✅ Hangfire dashboard with basic auth
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+//////////////////////////////////////////////////////////
+/*          Hangfire dashboard with basic auth          */
+// ✅ 
+/*app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     DashboardTitle = "Hangfire Job Restaurant Application",
     DarkModeEnabled = true,
@@ -82,8 +98,9 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
             Pass = builder.Configuration["HangfireSettings:Pass"],
         }
     }
-});
+});*/
 
+//////////////////////////////////////////////////////////
 app.MapControllers();
 
 app.Run();

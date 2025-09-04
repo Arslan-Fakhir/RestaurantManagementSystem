@@ -7,10 +7,10 @@ namespace RestaurantDatabaseManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class JobController : ControllerBase
+    public class PendingPaymentsJob : ControllerBase
     {
         private readonly EmailService _emailService;
-        public JobController(EmailService emailService)
+        public PendingPaymentsJob(EmailService emailService)
         {
             _emailService = emailService;
         }
